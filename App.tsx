@@ -4,20 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { SafeAreaView, StyleSheet, Text, Button, Modal, View, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import { StatusBar } from 'react-native';
+
 
 const App = () => {
   const [scrollCount, setScrollCount] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
 
+  // ✅ useCameraDevices now returns an array
   const devices = useCameraDevices();
-  const device = devices.front; // use front camera
+  const device = devices.find((d) => d.position === 'front'); // pick front camera manually
 
-  // Ask for camera permission once when app starts
+  // ✅ requestCameraPermission() now returns an object
   useEffect(() => {
     const requestPermission = async () => {
-      const status = await Camera.requestCameraPermission();
-      if (status === 'authorized') {
+      const permission = await Camera.requestCameraPermission();
+      if (permission === 'granted') {
         setHasPermission(true);
       } else {
         Alert.alert('Camera permission required', 'Please enable it in settings.');
@@ -40,26 +43,37 @@ const App = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1,paddingTop: StatusBar.currentHeight }}>
+      <StatusBar
+    barStyle="dark-content"   // use "light-content" if you have a dark background
+    backgroundColor="transparent"  // optional: makes it blend with your app
+    translucent={true}  // ensures content doesn’t get pushed down
+    hidden={false}  // very important — ensures status bar is visible
+  />
       <WebView source={{ uri: 'https://www.instagram.com/' }} />
       <Button title="Next Reel (simulate scroll)" onPress={handleScroll} />
 
-      {/* Push-up camera overlay */}
       <Modal visible={isLocked} transparent animationType="slide">
         <View style={styles.overlay}>
-          {hasPermission && device ? (
-            <Camera
-              style={styles.camera}
-              device={device}
-              isActive={true}
-            />
+          {hasPermission ? (
+            device ? (
+              <>
+                <Camera
+                  style={styles.camera}
+                  device={device}
+                  isActive={true}
+                />
+                <View style={styles.overlayText}>
+                  <Text style={styles.text}>Do 5 push-ups to unlock more scrolls! 💪</Text>
+                  <Button title="Done (for now)" onPress={unlockScrolls} />
+                </View>
+              </>
+            ) : (
+              <Text style={styles.text}>Loading camera device...</Text>
+            )
           ) : (
             <Text style={styles.text}>Requesting camera permission...</Text>
           )}
-          <View style={styles.overlayText}>
-            <Text style={styles.text}>Do 5 push-ups to unlock more scrolls! 💪</Text>
-            <Button title="Done (for now)" onPress={unlockScrolls} />
-          </View>
         </View>
       </Modal>
     </SafeAreaView>
